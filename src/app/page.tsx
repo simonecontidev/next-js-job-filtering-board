@@ -13,6 +13,8 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Autocomplete,
+  Chip,
 } from "@mui/material";
 import data from "../data/data.json";
 import JobListing from "../components/JobListing";
@@ -27,6 +29,7 @@ export default function Home() {
   const [role, setRole] = React.useState<string | "">("");
   const [level, setLevel] = React.useState<string | "">("");
   const [contract, setContract] = React.useState<string | "">("");
+  const [selectedTags, setSelectedTags] = React.useState<string[]>([]);
 
   // -------- Opzioni derivate dai dati
   const roles = React.useMemo(
@@ -41,8 +44,16 @@ export default function Home() {
     () => Array.from(new Set(data.map((d) => d.contract))).sort(),
     []
   );
+  const tagOptions = React.useMemo(() => {
+    const tags = new Set<string>();
+    data.forEach((d) => {
+      d.languages.forEach((l) => tags.add(l));
+      d.tools.forEach((t) => tags.add(t));
+    });
+    return Array.from(tags).sort();
+  }, []);
 
-  // -------- Filtro
+  // -------- Filtro principale
   const filtered: Job[] = React.useMemo(() => {
     const q = search.trim().toLowerCase();
 
@@ -53,6 +64,14 @@ export default function Home() {
       if (level && job.level !== level) return false;
       if (contract && job.contract !== contract) return false;
 
+      // filtro per tag
+      if (selectedTags.length > 0) {
+        const jobTags = new Set([...job.languages, ...job.tools]);
+        const allIncluded = selectedTags.every((t) => jobTags.has(t));
+        if (!allIncluded) return false;
+      }
+
+      // filtro testuale
       if (q) {
         const haystack = `${job.company} ${job.position} ${job.role} ${job.level}`.toLowerCase();
         if (!haystack.includes(q)) return false;
@@ -60,32 +79,55 @@ export default function Home() {
 
       return true;
     });
-  }, [search, onlyNew, onlyFeatured, role, level, contract]);
+  }, [search, onlyNew, onlyFeatured, role, level, contract, selectedTags]);
+
+  // -------- Reset rapido
+  const handleReset = () => {
+    setSearch("");
+    setOnlyNew(false);
+    setOnlyFeatured(false);
+    setRole("");
+    setLevel("");
+    setContract("");
+    setSelectedTags([]);
+  };
 
   return (
     <Container maxWidth="md" sx={{ py: 8 }}>
       <Typography
         variant="h3"
         gutterBottom
-        sx={{ fontWeight: 800, textAlign: "center", color: "#2C3A3A", mb: 3, letterSpacing: "-0.5px" }}
+        sx={{
+          fontWeight: 800,
+          textAlign: "center",
+          color: "#2C3A3A",
+          mb: 3,
+          letterSpacing: "-0.5px",
+        }}
       >
         Job Filtering Board
       </Typography>
 
-      {/* Filter bar semplice */}
+      {/* ------------------ FILTER BAR ------------------ */}
       <Paper
         elevation={3}
         sx={{
           position: "sticky",
           top: 0,
           zIndex: 1,
-          p: 2,
-          mb: 4,
+          p: 3,
+          mb: 5,
           borderRadius: 3,
           backdropFilter: "saturate(1.2) blur(8px)",
         }}
       >
-        <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "1.2fr 1fr 1fr" } }}>
+        <Box
+          sx={{
+            display: "grid",
+            gap: 2.5,
+            gridTemplateColumns: { xs: "1fr", md: "1.5fr 1fr 1fr" },
+          }}
+        >
           {/* Search + toggles */}
           <Box sx={{ display: "grid", gap: 1.5 }}>
             <TextField
@@ -106,32 +148,23 @@ export default function Home() {
             </Box>
           </Box>
 
-          {/* Role */}
-          <FormControl size="small">
-            <InputLabel>Role</InputLabel>
-            <Select
-              label="Role"
-              value={role}
-              onChange={(e) => setRole(String(e.target.value))}
-            >
-              <MenuItem value="">All</MenuItem>
-              {roles.map((r) => (
-                <MenuItem key={r} value={r}>
-                  {r}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          {/* Role / Level */}
+          <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
+            <FormControl size="small">
+              <InputLabel>Role</InputLabel>
+              <Select label="Role" value={role} onChange={(e) => setRole(String(e.target.value))}>
+                <MenuItem value="">All</MenuItem>
+                {roles.map((r) => (
+                  <MenuItem key={r} value={r}>
+                    {r}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
 
-          {/* Level / Contract in colonna su mobile */}
-          <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" } }}>
             <FormControl size="small">
               <InputLabel>Level</InputLabel>
-              <Select
-                label="Level"
-                value={level}
-                onChange={(e) => setLevel(String(e.target.value))}
-              >
+              <Select label="Level" value={level} onChange={(e) => setLevel(String(e.target.value))}>
                 <MenuItem value="">All</MenuItem>
                 {levels.map((l) => (
                   <MenuItem key={l} value={l}>
@@ -140,7 +173,10 @@ export default function Home() {
                 ))}
               </Select>
             </FormControl>
+          </Box>
 
+          {/* Contract + Tags */}
+          <Box sx={{ display: "grid", gap: 2 }}>
             <FormControl size="small">
               <InputLabel>Contract</InputLabel>
               <Select
@@ -156,17 +192,52 @@ export default function Home() {
                 ))}
               </Select>
             </FormControl>
+
+            <Autocomplete
+              multiple
+              size="small"
+              options={tagOptions}
+              value={selectedTags}
+              onChange={(_, v) => setSelectedTags(v)}
+              renderTags={(value, getTagProps) =>
+                value.map((option, index) => (
+                  <Chip
+                    variant="outlined"
+                    label={option}
+                    {...getTagProps({ index })}
+                    key={option}
+                  />
+                ))
+              }
+              renderInput={(params) => <TextField {...params} label="Tags (languages & tools)" />}
+            />
           </Box>
+        </Box>
+
+        {/* Reset */}
+        <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 2 }}>
+          <Typography
+            variant="body2"
+            sx={{
+              color: "#5CA5A5",
+              cursor: "pointer",
+              fontWeight: 600,
+              "&:hover": { textDecoration: "underline" },
+            }}
+            onClick={handleReset}
+          >
+            Reset filters
+          </Typography>
         </Box>
       </Paper>
 
-      {/* Lista filtrata */}
+      {/* ------------------ JOB LISTINGS ------------------ */}
       {filtered.map((job) => (
         <JobListing
           key={job.id}
           company={job.company}
           logo={job.logo}
-          newJob={job.new}
+          newJob={Boolean(job.new)}
           featured={job.featured}
           position={job.position}
           role={job.role}
