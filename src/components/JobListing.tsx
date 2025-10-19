@@ -16,6 +16,8 @@ interface Props {
   contract: string;
   languages: string[];
   tools: string[];
+  /** Called when a tag (language/tool) is clicked */
+  onTagClick?: (tag: string) => void;
 }
 
 const JobListing = ({
@@ -30,7 +32,15 @@ const JobListing = ({
   contract,
   languages,
   tools,
+  onTagClick,
 }: Props) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>, tag: string) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onTagClick?.(tag);
+    }
+  };
+
   return (
     <Paper
       elevation={featured ? 6 : 2}
@@ -146,7 +156,7 @@ const JobListing = ({
         </Box>
       </Box>
 
-      {/* RIGHT: skill tags */}
+      {/* RIGHT: skill tags (clickable) */}
       <Box
         sx={{
           display: "flex",
@@ -158,6 +168,11 @@ const JobListing = ({
         {[...languages, ...tools].map((tag) => (
           <Box
             key={tag}
+            role="button"
+            tabIndex={0}
+            aria-label={`Filter by ${tag}`}
+            onClick={() => onTagClick?.(tag)}
+            onKeyDown={(e) => handleKeyDown(e, tag)}
             sx={{
               backgroundColor: "rgba(92,165,165,0.12)",
               color: "#5CA5A5",
@@ -168,9 +183,13 @@ const JobListing = ({
               fontSize: 13,
               cursor: "pointer",
               transition: "all 0.25s ease",
+              outline: "none",
               "&:hover": {
                 backgroundColor: "#5CA5A5",
                 color: "white",
+              },
+              "&:focus-visible": {
+                boxShadow: "0 0 0 3px rgba(92,165,165,0.35)",
               },
             }}
           >

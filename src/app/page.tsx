@@ -21,6 +21,8 @@ import JobListing from "../components/JobListing";
 
 type Job = typeof data[number];
 
+type SortKey = "recent" | "company" | "role" | "level";
+
 export default function Home() {
   // -------- Stato filtri
   const [search, setSearch] = React.useState("");
@@ -30,6 +32,7 @@ export default function Home() {
   const [level, setLevel] = React.useState<string | "">("");
   const [contract, setContract] = React.useState<string | "">("");
   const [selectedTags, setSelectedTags] = React.useState<string[]>([]);
+  const [sortBy, setSortBy] = React.useState<SortKey>("recent");
 
   // -------- Opzioni derivate dai dati
   const roles = React.useMemo(
@@ -53,25 +56,23 @@ export default function Home() {
     return Array.from(tags).sort();
   }, []);
 
-  // -------- Filtro principale
+  // -------- Filtro + Ordinamento
   const filtered: Job[] = React.useMemo(() => {
     const q = search.trim().toLowerCase();
 
-    return data.filter((job) => {
+    const out = data.filter((job) => {
       if (onlyNew && !job.new) return false;
       if (onlyFeatured && !job.featured) return false;
       if (role && job.role !== role) return false;
       if (level && job.level !== level) return false;
       if (contract && job.contract !== contract) return false;
 
-      // filtro per tag
       if (selectedTags.length > 0) {
         const jobTags = new Set([...job.languages, ...job.tools]);
         const allIncluded = selectedTags.every((t) => jobTags.has(t));
         if (!allIncluded) return false;
       }
 
-      // filtro testuale
       if (q) {
         const haystack = `${job.company} ${job.position} ${job.role} ${job.level}`.toLowerCase();
         if (!haystack.includes(q)) return false;
@@ -79,7 +80,14 @@ export default function Home() {
 
       return true;
     });
-  }, [search, onlyNew, onlyFeatured, role, level, contract, selectedTags]);
+
+    // Ordinamento
+    if (sortBy === "company") return out.slice().sort((a, b) => a.company.localeCompare(b.company));
+    if (sortBy === "role") return out.slice().sort((a, b) => a.role.localeCompare(b.role));
+    if (sortBy === "level") return out.slice().sort((a, b) => a.level.localeCompare(b.level));
+    // "recent" mantiene l'ordine del JSON (puoi collegarlo a un campo data futuro)
+    return out;
+  }, [search, onlyNew, onlyFeatured, role, level, contract, selectedTags, sortBy]);
 
   // -------- Reset rapido
   const handleReset = () => {
@@ -90,7 +98,12 @@ export default function Home() {
     setLevel("");
     setContract("");
     setSelectedTags([]);
+    setSortBy("recent");
   };
+
+  // -------- Click su tag dalla card → aggiunge ai filtri
+  const handleTagClick = (tag: string) =>
+    setSelectedTags((prev) => (prev.includes(tag) ? prev : [...prev, tag]));
 
   return (
     <Container maxWidth="md" sx={{ py: 8 }}>
@@ -101,11 +114,14 @@ export default function Home() {
           fontWeight: 800,
           textAlign: "center",
           color: "#2C3A3A",
-          mb: 3,
+          mb: 1.5,
           letterSpacing: "-0.5px",
         }}
       >
         Job Filtering Board
+      </Typography>
+      <Typography variant="body2" align="center" sx={{ color: "#7C8F8F", mb: 3 }}>
+        {filtered.length} result{filtered.length === 1 ? "" : "s"}
       </Typography>
 
       {/* ------------------ FILTER BAR ------------------ */}
@@ -175,24 +191,42 @@ export default function Home() {
             </FormControl>
           </Box>
 
-          {/* Contract + Tags */}
+          {/* Contract + Sort + Tags */}
           <Box sx={{ display: "grid", gap: 2 }}>
-            <FormControl size="small">
-              <InputLabel>Contract</InputLabel>
-              <Select
-                label="Contract"
-                value={contract}
-                onChange={(e) => setContract(String(e.target.value))}
-              >
-                <MenuItem value="">All</MenuItem>
-                {contracts.map((c) => (
-                  <MenuItem key={c} value={c}>
-                    {c}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2 }}>
+              <FormControl size="small">
+                <InputLabel>Contract</InputLabel>
+                <Select
+                  label="Contract"
+                  value={contract}
+                  onChange={(e) => setContract(String(e.target.value))}
+                >
+                  <MenuItem value="">All</MenuItem>
+                  {contracts.map((c) => (
+                    <MenuItem key={c} value={c}>
+                      {c}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
 
+              {/* SORT */}
+              <FormControl size="small">
+                <InputLabel>Sort</InputLabel>
+                <Select
+                  label="Sort"
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as SortKey)}
+                >
+                  <MenuItem value="recent">Newest</MenuItem>
+                  <MenuItem value="company">Company A–Z</MenuItem>
+                  <MenuItem value="role">Role A–Z</MenuItem>
+                  <MenuItem value="level">Level A–Z</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
+
+            {/* TAGS */}
             <Autocomplete
               multiple
               size="small"
@@ -246,13 +280,38 @@ export default function Home() {
           contract={job.contract}
           languages={job.languages}
           tools={job.tools}
+          // ⬇️ FEATURE 3: click sui tag per aggiungere al filtro
+          // Per farlo funzionare: in JobListing aggiungi prop opzionale `onTagClick?: (tag: string) => void`
+          // e usa onClick={...} sui chip/tag.
+          onTagClick={handleTagClick as any}
         />
       ))}
 
+      {/* ------------------ EMPTY STATE PREMIUM (FEATURE 5) ------------------ */}
       {filtered.length === 0 && (
-        <Typography sx={{ textAlign: "center", color: "#7C8F8F", mt: 6 }}>
-          No results. Try adjusting the filters.
-        </Typography>
+        <Paper
+          variant="outlined"
+          sx={{ textAlign: "center", py: 6, borderRadius: 3, color: "#7C8F8F" }}
+        >
+          <Typography variant="h6" sx={{ fontWeight: 700, mb: 1, color: "#2C3A3A" }}>
+            No results found
+          </Typography>
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            Try changing role, level, or add/remove tags.
+          </Typography>
+          <Box
+            component="span"
+            onClick={handleReset}
+            sx={{
+              color: "#5CA5A5",
+              fontWeight: 600,
+              cursor: "pointer",
+              "&:hover": { textDecoration: "underline" },
+            }}
+          >
+            Reset filters
+          </Box>
+        </Paper>
       )}
     </Container>
   );
