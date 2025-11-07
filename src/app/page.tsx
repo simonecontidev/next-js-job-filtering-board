@@ -18,21 +18,49 @@ import {
 } from "@mui/material";
 import data from "../data/data.json";
 import JobListing from "../components/JobListing";
+import { useFilters, DEFAULTS, SortKey } from "@/state/useFilters";
 
 type Job = typeof data[number];
 
-type SortKey = "recent" | "company" | "role" | "level";
-
 export default function Home() {
-  // -------- Stato filtri
-  const [search, setSearch] = React.useState("");
-  const [onlyNew, setOnlyNew] = React.useState(false);
-  const [onlyFeatured, setOnlyFeatured] = React.useState(false);
-  const [role, setRole] = React.useState<string | "">("");
-  const [level, setLevel] = React.useState<string | "">("");
-  const [contract, setContract] = React.useState<string | "">("");
-  const [selectedTags, setSelectedTags] = React.useState<string[]>([]);
-  const [sortBy, setSortBy] = React.useState<SortKey>("recent");
+  // -------- Stato filtri (persistente URL + localStorage)
+  const { filters, setFilters } = useFilters();
+
+  // Adapter per mantenere la TUA API identica (niente tocchi nel JSX)
+  const {
+    search,
+    onlyNew,
+    onlyFeatured,
+    role,
+    level,
+    contract,
+    selectedTags,
+    sortBy,
+  } = filters;
+
+  const setSearch = (v: string) =>
+    setFilters((s) => ({ ...s, search: v }));
+
+  const setOnlyNew = (v: boolean) =>
+    setFilters((s) => ({ ...s, onlyNew: v }));
+
+  const setOnlyFeatured = (v: boolean) =>
+    setFilters((s) => ({ ...s, onlyFeatured: v }));
+
+  const setRole = (v: string | "") =>
+    setFilters((s) => ({ ...s, role: v }));
+
+  const setLevel = (v: string | "") =>
+    setFilters((s) => ({ ...s, level: v }));
+
+  const setContract = (v: string | "") =>
+    setFilters((s) => ({ ...s, contract: v }));
+
+  const setSelectedTags = (v: string[]) =>
+    setFilters((s) => ({ ...s, selectedTags: v }));
+
+  const setSortBy = (v: SortKey) =>
+    setFilters((s) => ({ ...s, sortBy: v }));
 
   // -------- Opzioni derivate dai dati
   const roles = React.useMemo(
@@ -85,25 +113,39 @@ export default function Home() {
     if (sortBy === "company") return out.slice().sort((a, b) => a.company.localeCompare(b.company));
     if (sortBy === "role") return out.slice().sort((a, b) => a.role.localeCompare(b.role));
     if (sortBy === "level") return out.slice().sort((a, b) => a.level.localeCompare(b.level));
-    // "recent" mantiene l'ordine del JSON (puoi collegarlo a un campo data futuro)
+    // "recent" mantiene l'ordine del JSON
     return out;
   }, [search, onlyNew, onlyFeatured, role, level, contract, selectedTags, sortBy]);
 
   // -------- Reset rapido
-  const handleReset = () => {
-    setSearch("");
-    setOnlyNew(false);
-    setOnlyFeatured(false);
-    setRole("");
-    setLevel("");
-    setContract("");
-    setSelectedTags([]);
-    setSortBy("recent");
-  };
+  const handleReset = () => setFilters({ ...DEFAULTS });
 
   // -------- Click su tag dalla card → aggiunge ai filtri
   const handleTagClick = (tag: string) =>
-    setSelectedTags((prev) => (prev.includes(tag) ? prev : [...prev, tag]));
+    setSelectedTags(selectedTags.includes(tag) ? selectedTags : [...selectedTags, tag]);
+
+  // -------- Copy share link (senza cambiare il design)
+  const [copied, setCopied] = React.useState(false);
+  const copyShareLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // fallback: seleziona e copia
+      const tmp = document.createElement("input");
+      tmp.value = window.location.href;
+      document.body.appendChild(tmp);
+      tmp.select();
+      try {
+        document.execCommand("copy");
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      } finally {
+        document.body.removeChild(tmp);
+      }
+    }
+  };
 
   return (
     <Container maxWidth="md" sx={{ py: 8 }}>
@@ -248,8 +290,25 @@ export default function Home() {
           </Box>
         </Box>
 
-        {/* Reset */}
-        <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 2 }}>
+        {/* Reset + Copy link (stessa riga, stesso stile) */}
+        <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 2, gap: 3, alignItems: "center" }}>
+          <Typography
+            variant="body2"
+            role="button"
+            aria-label="Copy share link"
+            title="Copy share link"
+            sx={{
+              color: "#5CA5A5",
+              cursor: "pointer",
+              fontWeight: 600,
+              "&:hover": { textDecoration: "underline" },
+              userSelect: "none",
+            }}
+            onClick={copyShareLink}
+          >
+            {copied ? "Copied!" : "Copy share link"}
+          </Typography>
+
           <Typography
             variant="body2"
             sx={{
@@ -257,6 +316,7 @@ export default function Home() {
               cursor: "pointer",
               fontWeight: 600,
               "&:hover": { textDecoration: "underline" },
+              userSelect: "none",
             }}
             onClick={handleReset}
           >
@@ -280,14 +340,11 @@ export default function Home() {
           contract={job.contract}
           languages={job.languages}
           tools={job.tools}
-          // ⬇️ FEATURE 3: click sui tag per aggiungere al filtro
-          // Per farlo funzionare: in JobListing aggiungi prop opzionale `onTagClick?: (tag: string) => void`
-          // e usa onClick={...} sui chip/tag.
           onTagClick={handleTagClick as any}
         />
       ))}
 
-      {/* ------------------ EMPTY STATE PREMIUM (FEATURE 5) ------------------ */}
+      {/* ------------------ EMPTY STATE ------------------ */}
       {filtered.length === 0 && (
         <Paper
           variant="outlined"
