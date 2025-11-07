@@ -1,36 +1,105 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🧩 Next.js Job Filtering Board
 
-## Getting Started
+A modern **interactive job board** built with **Next.js 15**, **TypeScript**, **MUI**, **Framer Motion**, and **local state persistence**.  
+It demonstrates clean UI architecture, advanced filter management, and smooth motion design — perfect for showcasing React + UX skills.
 
-First, run the development server:
+---
+
+## ✨ Features
+
+### 🎯 Filtering & State
+
+- Multi-criteria job filtering: **role, level, contract, tags, search, featured/new**
+- Instant updates with derived options (auto-populate filter lists)
+- URL-synced filters → shareable links (`?role=frontend&remote=true`)
+- Persistent filters via `localStorage`
+- Quick **Reset** to defaults
+
+### 💾 Persistence & Sharing
+
+- Filter state stored in both **URL** and **localStorage**
+- “Copy share link” → instantly share your current filter setup
+
+### 💖 Favorites & History
+
+- Save interesting jobs locally (heart icon)
+- Persistent **favorites list** in localStorage
+- **Recent searches** dropdown (auto-saved last 5 URLs)
+
+### 🌗 Theming
+
+- Full **dark/light theme toggle**
+- Accent color system (tropical aqua / neutral)
+- Syncs to OS color scheme (`prefers-color-scheme`)
+
+### 🪄 Animations & Motion Design
+
+- **Framer Motion** staggered fade-in + slide-up transitions for job cards
+- **AnimatePresence** fade-out when filters change
+- Sticky header that **compacts smoothly** on scroll (animated padding, subtle shadow)
+- Animated numeric counter for result count
+
+### 🌴 UX Details
+
+- Friendly empty & error states  
+  _“Nessun risultato — prova a rimuovere 1 filtro 🌴”_
+- Loading and retry feedback with exponential backoff
+- Accessible interactions (keyboard navigation, aria labels)
+- Responsive grid, fully optimized for desktop and mobile
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer                | Tools                                           |
+| -------------------- | ----------------------------------------------- |
+| **Framework**        | [Next.js 15 (App Router)](https://nextjs.org/)  |
+| **Language**         | TypeScript                                      |
+| **UI Library**       | [Material UI (MUI)](https://mui.com/)           |
+| **Animation**        | [Framer Motion](https://www.framer.com/motion/) |
+| **State Management** | React Hooks + Context                           |
+| **Data**             | Static JSON (`/data/data.json`)                 |
+| **Styling**          | MUI + inline sx + dark/light variables          |
+| **Persistence**      | URL search params + localStorage                |
+
+---
+
+## 🧠 Architecture
+
+src/
+├─ app/
+│ ├─ layout.tsx # Root layout with ThemeProvider
+│ └─ page.tsx # Main Job Filtering page
+│
+├─ components/
+│ ├─ JobListing.tsx # Single job card + favorite icon
+│ └─ ThemeToggle.tsx # Dark/Light toggle button
+│
+├─ hooks/
+│ ├─ useUrlPersist.ts # Sync filters with URL + storage
+│ └─ useRetryFetch.ts # Robust fetch with retry + cache
+│
+└─ state/
+├─ useFilters.ts # Global filter state hook
+├─ useFavorites.ts # Local favorites management
+└─ useRecentSearches.ts # Recent query history
+
+Each layer is **atomic** and self-contained — you can reuse the logic in any other React/Next project.
+
+---
+
+## 🚀 Getting Started
 
 ```bash
+# 1. Clone the repo
+git clone https://github.com/YOUR-USERNAME/next-js-job-filtering-board.git
+cd next-js-job-filtering-board
+
+# 2. Install dependencies
+npm install
+
+# 3. Run the app
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+
+Then open http://localhost:3000
 ```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
