@@ -1,8 +1,10 @@
 "use client";
 
 import React from "react";
-import { Box, Typography, Paper } from "@mui/material";
+import { Box, Typography, Paper, IconButton, Tooltip } from "@mui/material";
 import Image from "next/image";
+import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
+import FavoriteIcon from "@mui/icons-material/Favorite";
 
 interface Props {
   company: string;
@@ -18,6 +20,9 @@ interface Props {
   tools: string[];
   /** Called when a tag (language/tool) is clicked */
   onTagClick?: (tag: string) => void;
+  /** Preferiti (opzionali, per non rompere la UI esistente) */
+  isFavorite?: boolean;
+  onToggleFavorite?: () => void;
 }
 
 const JobListing = ({
@@ -33,6 +38,8 @@ const JobListing = ({
   languages,
   tools,
   onTagClick,
+  isFavorite = false,
+  onToggleFavorite,
 }: Props) => {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>, tag: string) => {
     if (e.key === "Enter" || e.key === " ") {
@@ -55,6 +62,7 @@ const JobListing = ({
         borderRadius: "16px",
         borderLeft: featured ? "6px solid #5CA5A5" : "6px solid transparent",
         backgroundColor: "#fff",
+        position: "relative", // <— serve per l’overlay del cuore
         transition: "all 0.3s ease",
         "&:hover": {
           transform: "translateY(-4px)",
@@ -62,6 +70,27 @@ const JobListing = ({
         },
       }}
     >
+      {/* Overlay: preferiti (non altera il layout) */}
+      {onToggleFavorite && (
+        <Box sx={{ position: "absolute", top: 10, right: 10 }}>
+          <Tooltip title={isFavorite ? "Remove from favorites" : "Save to favorites"}>
+            <IconButton
+              aria-label={isFavorite ? "unfavorite" : "favorite"}
+              aria-pressed={isFavorite}
+              onClick={onToggleFavorite}
+              size="small"
+              sx={{
+                color: isFavorite ? "#E57373" : "#5CA5A5",
+                backgroundColor: "transparent",
+                "&:hover": { backgroundColor: "rgba(92,165,165,0.08)" },
+              }}
+            >
+              {isFavorite ? <FavoriteIcon fontSize="small" /> : <FavoriteBorderIcon fontSize="small" />}
+            </IconButton>
+          </Tooltip>
+        </Box>
+      )}
+
       {/* LEFT: logo + info */}
       <Box sx={{ display: "flex", alignItems: "center", gap: 3 }}>
         <Image

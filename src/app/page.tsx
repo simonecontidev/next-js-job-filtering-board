@@ -18,19 +18,31 @@ import {
   Snackbar,
   Alert,
   IconButton,
+  Menu,
+  MenuItem as MenuItemMUI,
+  Divider,
+  Collapse,
 } from "@mui/material";
 import ContentCopyOutlinedIcon from "@mui/icons-material/ContentCopyOutlined";
+import HistoryOutlinedIcon from "@mui/icons-material/HistoryOutlined";
+import FavoriteOutlinedIcon from "@mui/icons-material/FavoriteOutlined";
+import ClearAllOutlinedIcon from "@mui/icons-material/ClearAllOutlined";
 import data from "../data/data.json";
 import JobListing from "../components/JobListing";
 import { useFilters, DEFAULTS, SortKey } from "@/state/useFilters";
+import { useFavorites } from "@/state/useFavorites";
+import { useRecentSearches, summarizeFilters } from "@/state/useRecentSearches";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 
 type Job = typeof data[number];
 
 export default function Home() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   // -------- Stato filtri (persistente URL + localStorage)
   const { filters, setFilters } = useFilters();
-
-  // Adapter per mantenere la TUA API identica (niente tocchi nel JSX)
   const {
     search,
     onlyNew,
@@ -42,6 +54,26 @@ export default function Home() {
     sortBy,
   } = filters;
 
+  // -------- Favorites
+  const { favorites, isFavorite, toggleFavorite, clearFavorites } = useFavorites();
+  const favoriteJobs = React.useMemo(
+    () => data.filter((j) => favorites.includes(j.id)),
+    [favorites]
+  );
+
+  // -------- Recent searches
+  const { items: recent, add: addRecent, clear: clearRecent } = useRecentSearches(5);
+
+  // Snapshot ricerche quando cambia la query dell'URL
+  React.useEffect(() => {
+    const url = typeof window !== "undefined" ? window.location.href : "";
+    const summary = summarizeFilters(filters);
+    // evita di salvare “All jobs” quando è vuoto e già presente
+    addRecent({ url, summary });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname, searchParams?.toString()]);
+
+  // -------- Adapter setters (mantengono la tua API JSX)
   const setSearch = (v: string) => setFilters((s) => ({ ...s, search: v }));
   const setOnlyNew = (v: boolean) => setFilters((s) => ({ ...s, onlyNew: v }));
   const setOnlyFeatured = (v: boolean) =>
@@ -104,20 +136,19 @@ export default function Home() {
     if (sortBy === "company") return out.slice().sort((a, b) => a.company.localeCompare(b.company));
     if (sortBy === "role") return out.slice().sort((a, b) => a.role.localeCompare(b.role));
     if (sortBy === "level") return out.slice().sort((a, b) => a.level.localeCompare(b.level));
-    return out; // "recent"
+    return out;
   }, [search, onlyNew, onlyFeatured, role, level, contract, selectedTags, sortBy]);
 
   // -------- Reset rapido
   const handleReset = () => setFilters({ ...DEFAULTS });
 
-  // -------- Click su tag dalla card → aggiunge ai filtri
+  // -------- Click tag
   const handleTagClick = (tag: string) =>
     setSelectedTags(selectedTags.includes(tag) ? selectedTags : [...selectedTags, tag]);
 
-  // -------- Copy share link (icona + snackbar)
+  // -------- Copy share link
   const [copied, setCopied] = React.useState(false);
   const [snackOpen, setSnackOpen] = React.useState(false);
-
   const copyShareLink = async () => {
     const href = typeof window !== "undefined" ? window.location.href : "";
     try {
@@ -126,7 +157,6 @@ export default function Home() {
       setSnackOpen(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      // fallback
       const tmp = document.createElement("input");
       tmp.value = href;
       document.body.appendChild(tmp);
@@ -141,6 +171,20 @@ export default function Home() {
       }
     }
   };
+
+  // -------- Recent searches menu
+  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
+  const openRecent = Boolean(anchorEl);
+  const handleOpenRecent = (e: React.MouseEvent<HTMLElement>) => setAnchorEl(e.currentTarget);
+  const handleCloseRecent = () => setAnchorEl(null);
+
+  const goToRecent = (url: string) => {
+    handleCloseRecent();
+    router.push(url);
+  };
+
+  // -------- Favorites panel toggle
+  const [showFavs, setShowFavs] = React.useState(false);
 
   return (
     <Container maxWidth="md" sx={{ py: 8 }}>
@@ -285,7 +329,7 @@ export default function Home() {
           </Box>
         </Box>
 
-        {/* Reset + Copy link (stessa riga, stesso stile) */}
+        {/* Azioni: Copy link • Recent • Favorites • Reset */}
         <Box
           sx={{
             display: "flex",
@@ -295,6 +339,53 @@ export default function Home() {
             alignItems: "center",
           }}
         >
+          {/* Recent searches (menu) */}
+          <Box
+            role="button"
+            aria-label="Recent searches"
+            title="Recent searches"
+            onClick={handleOpenRecent}
+            sx={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 1,
+              color: "#5CA5A5",
+              cursor: "pointer",
+              fontWeight: 600,
+              userSelect: "none",
+              "&:hover": { textDecoration: "underline" },
+            }}
+          >
+            <HistoryOutlinedIcon sx={{ fontSize: 18 }} />
+            <Typography variant="body2" component="span">
+              Recent searches
+            </Typography>
+          </Box>
+
+          {/* Favorites toggle */}
+          <Box
+            role="button"
+            aria-label="Favorites"
+            title="Favorites"
+            onClick={() => setShowFavs((s) => !s)}
+            sx={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 1,
+              color: "#5CA5A5",
+              cursor: "pointer",
+              fontWeight: 600,
+              userSelect: "none",
+              "&:hover": { textDecoration: "underline" },
+            }}
+          >
+            <FavoriteOutlinedIcon sx={{ fontSize: 18 }} />
+            <Typography variant="body2" component="span">
+              Favorites ({favorites.length})
+            </Typography>
+          </Box>
+
+          {/* Copy link */}
           <Box
             role="button"
             aria-label="Copy share link"
@@ -311,39 +402,103 @@ export default function Home() {
               "&:hover": { textDecoration: "underline" },
             }}
           >
-            <IconButton
-              size="small"
-              aria-label="copy"
-              onClick={copyShareLink}
-              sx={{ color: "#5CA5A5", p: 0.5 }}
-            >
-              <ContentCopyOutlinedIcon fontSize="small" />
-            </IconButton>
+            <ContentCopyOutlinedIcon sx={{ fontSize: 18 }} />
             <Typography variant="body2" component="span">
               {copied ? "Copied!" : "Copy share link"}
             </Typography>
           </Box>
 
-          <Typography
-            variant="body2"
+          {/* Reset */}
+          <Box
+            role="button"
+            aria-label="Reset filters"
+            title="Reset filters"
+            onClick={handleReset}
             sx={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 1,
               color: "#5CA5A5",
               cursor: "pointer",
               fontWeight: 600,
-              "&:hover": { textDecoration: "underline" },
               userSelect: "none",
+              "&:hover": { textDecoration: "underline" },
             }}
-            onClick={handleReset}
           >
-            Reset filters
-          </Typography>
+            <ClearAllOutlinedIcon sx={{ fontSize: 18 }} />
+            <Typography variant="body2" component="span">Reset filters</Typography>
+          </Box>
         </Box>
+
+        {/* Pannello Favorites (collassabile) */}
+        <Collapse in={showFavs} unmountOnExit>
+          <Paper
+            variant="outlined"
+            sx={{ mt: 2, p: 2, borderRadius: 2, bgcolor: "#F4FAFA" }}
+          >
+            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 800, color: "#2C3A3A" }}>
+                Saved jobs
+              </Typography>
+              {favorites.length > 0 && (
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "#5CA5A5",
+                    cursor: "pointer",
+                    fontWeight: 600,
+                    "&:hover": { textDecoration: "underline" },
+                  }}
+                  onClick={clearFavorites}
+                >
+                  Clear all
+                </Typography>
+              )}
+            </Box>
+
+            {favoriteJobs.length === 0 ? (
+              <Typography variant="body2" sx={{ color: "#7C8F8F" }}>
+                No favorites yet. Click the heart icon on a job to save it.
+              </Typography>
+            ) : (
+              <Box sx={{ display: "grid", gap: 1.5 }}>
+                {favoriteJobs.map((job) => (
+                  <Box
+                    key={job.id}
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 1,
+                      p: 1,
+                      borderRadius: 1.5,
+                      bgcolor: "#fff",
+                      border: "1px solid #E0EFEF",
+                    }}
+                  >
+                    <Typography variant="body2" sx={{ fontWeight: 600, color: "#2C3A3A" }}>
+                      {job.position} — {job.company}
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      sx={{ color: "#E57373", cursor: "pointer", fontWeight: 600 }}
+                      onClick={() => toggleFavorite(job.id)}
+                    >
+                      Remove
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
+            )}
+          </Paper>
+        </Collapse>
       </Paper>
 
       {/* ------------------ JOB LISTINGS ------------------ */}
       {filtered.map((job) => (
         <JobListing
           key={job.id}
+          id={job.id}
           company={job.company}
           logo={job.logo}
           newJob={Boolean(job.new)}
@@ -356,6 +511,8 @@ export default function Home() {
           languages={job.languages}
           tools={job.tools}
           onTagClick={handleTagClick as any}
+          isFavorite={isFavorite(job.id)}
+          onToggleFavorite={() => toggleFavorite(job.id)}
         />
       ))}
 
@@ -402,6 +559,32 @@ export default function Home() {
           Copied to clipboard
         </Alert>
       </Snackbar>
+
+      {/* Menu recent searches */}
+      <Menu
+        anchorEl={anchorEl}
+        open={openRecent}
+        onClose={handleCloseRecent}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "right" }}
+      >
+        {recent.length === 0 && (
+          <MenuItemMUI disabled>No recent searches</MenuItemMUI>
+        )}
+        {recent.map((it, idx) => (
+          <MenuItemMUI key={it.ts} onClick={() => goToRecent(it.url)}>
+            {it.summary}
+          </MenuItemMUI>
+        ))}
+        {recent.length > 0 && (
+          <>
+            <Divider />
+            <MenuItemMUI onClick={() => { clearRecent(); handleCloseRecent(); }}>
+              Clear recent
+            </MenuItemMUI>
+          </>
+        )}
+      </Menu>
     </Container>
   );
 }
