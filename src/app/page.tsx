@@ -15,7 +15,11 @@ import {
   MenuItem,
   Autocomplete,
   Chip,
+  Snackbar,
+  Alert,
+  IconButton,
 } from "@mui/material";
+import ContentCopyOutlinedIcon from "@mui/icons-material/ContentCopyOutlined";
 import data from "../data/data.json";
 import JobListing from "../components/JobListing";
 import { useFilters, DEFAULTS, SortKey } from "@/state/useFilters";
@@ -38,29 +42,17 @@ export default function Home() {
     sortBy,
   } = filters;
 
-  const setSearch = (v: string) =>
-    setFilters((s) => ({ ...s, search: v }));
-
-  const setOnlyNew = (v: boolean) =>
-    setFilters((s) => ({ ...s, onlyNew: v }));
-
+  const setSearch = (v: string) => setFilters((s) => ({ ...s, search: v }));
+  const setOnlyNew = (v: boolean) => setFilters((s) => ({ ...s, onlyNew: v }));
   const setOnlyFeatured = (v: boolean) =>
     setFilters((s) => ({ ...s, onlyFeatured: v }));
-
-  const setRole = (v: string | "") =>
-    setFilters((s) => ({ ...s, role: v }));
-
-  const setLevel = (v: string | "") =>
-    setFilters((s) => ({ ...s, level: v }));
-
+  const setRole = (v: string | "") => setFilters((s) => ({ ...s, role: v }));
+  const setLevel = (v: string | "") => setFilters((s) => ({ ...s, level: v }));
   const setContract = (v: string | "") =>
     setFilters((s) => ({ ...s, contract: v }));
-
   const setSelectedTags = (v: string[]) =>
     setFilters((s) => ({ ...s, selectedTags: v }));
-
-  const setSortBy = (v: SortKey) =>
-    setFilters((s) => ({ ...s, sortBy: v }));
+  const setSortBy = (v: SortKey) => setFilters((s) => ({ ...s, sortBy: v }));
 
   // -------- Opzioni derivate dai dati
   const roles = React.useMemo(
@@ -109,12 +101,10 @@ export default function Home() {
       return true;
     });
 
-    // Ordinamento
     if (sortBy === "company") return out.slice().sort((a, b) => a.company.localeCompare(b.company));
     if (sortBy === "role") return out.slice().sort((a, b) => a.role.localeCompare(b.role));
     if (sortBy === "level") return out.slice().sort((a, b) => a.level.localeCompare(b.level));
-    // "recent" mantiene l'ordine del JSON
-    return out;
+    return out; // "recent"
   }, [search, onlyNew, onlyFeatured, role, level, contract, selectedTags, sortBy]);
 
   // -------- Reset rapido
@@ -124,22 +114,27 @@ export default function Home() {
   const handleTagClick = (tag: string) =>
     setSelectedTags(selectedTags.includes(tag) ? selectedTags : [...selectedTags, tag]);
 
-  // -------- Copy share link (senza cambiare il design)
+  // -------- Copy share link (icona + snackbar)
   const [copied, setCopied] = React.useState(false);
+  const [snackOpen, setSnackOpen] = React.useState(false);
+
   const copyShareLink = async () => {
+    const href = typeof window !== "undefined" ? window.location.href : "";
     try {
-      await navigator.clipboard.writeText(window.location.href);
+      await navigator.clipboard.writeText(href);
       setCopied(true);
+      setSnackOpen(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      // fallback: seleziona e copia
+      // fallback
       const tmp = document.createElement("input");
-      tmp.value = window.location.href;
+      tmp.value = href;
       document.body.appendChild(tmp);
       tmp.select();
       try {
         document.execCommand("copy");
         setCopied(true);
+        setSnackOpen(true);
         setTimeout(() => setCopied(false), 1500);
       } finally {
         document.body.removeChild(tmp);
@@ -291,23 +286,43 @@ export default function Home() {
         </Box>
 
         {/* Reset + Copy link (stessa riga, stesso stile) */}
-        <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 2, gap: 3, alignItems: "center" }}>
-          <Typography
-            variant="body2"
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "flex-end",
+            mt: 2,
+            gap: 3,
+            alignItems: "center",
+          }}
+        >
+          <Box
             role="button"
             aria-label="Copy share link"
             title="Copy share link"
+            onClick={copyShareLink}
             sx={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 1,
               color: "#5CA5A5",
               cursor: "pointer",
               fontWeight: 600,
-              "&:hover": { textDecoration: "underline" },
               userSelect: "none",
+              "&:hover": { textDecoration: "underline" },
             }}
-            onClick={copyShareLink}
           >
-            {copied ? "Copied!" : "Copy share link"}
-          </Typography>
+            <IconButton
+              size="small"
+              aria-label="copy"
+              onClick={copyShareLink}
+              sx={{ color: "#5CA5A5", p: 0.5 }}
+            >
+              <ContentCopyOutlinedIcon fontSize="small" />
+            </IconButton>
+            <Typography variant="body2" component="span">
+              {copied ? "Copied!" : "Copy share link"}
+            </Typography>
+          </Box>
 
           <Typography
             variant="body2"
@@ -370,6 +385,23 @@ export default function Home() {
           </Box>
         </Paper>
       )}
+
+      {/* Snackbar conferma copia */}
+      <Snackbar
+        open={snackOpen}
+        autoHideDuration={1500}
+        onClose={() => setSnackOpen(false)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          onClose={() => setSnackOpen(false)}
+          severity="success"
+          variant="filled"
+          sx={{ width: "100%" }}
+        >
+          Copied to clipboard
+        </Alert>
+      </Snackbar>
     </Container>
   );
 }
