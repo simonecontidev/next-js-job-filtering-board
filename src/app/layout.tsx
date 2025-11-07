@@ -1,14 +1,16 @@
-"use client";
+import type { Metadata } from "next";
+import ThemeProviderSC from "@/theme/ThemeProvider";
 
-import "./globals.css";
-import * as React from "react";
-import Home from "./page";
+export const metadata: Metadata = {
+  title: "Next.js Job Filtering Board",
+  description: "Filters with URL/localStorage + favorites + theme",
+};
 
-export default function RootLayout() {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body>
-        <Home />
+        <ThemeProviderSC>{children}</ThemeProviderSC>
       </body>
     </html>
   );
