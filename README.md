@@ -10,15 +10,16 @@
 
 ## 🌐 Live Demo & Preview
 
-🎯 **Live:** [https://next-job-board.vercel.app](https://next-job-board.vercel.app)  
-🖼️ **Preview:**
-
-![Job Filtering Board Preview](public/preview.jpg)
+🎯 **Live:** [Live](https://jobboard.simoneconti.work/)  
 
 ---
 
 A modern **interactive job board** built with **Next.js 15**, **TypeScript**, **MUI**, **Framer Motion**, and **local state persistence**.  
 It demonstrates clean UI architecture, advanced filter management, and smooth motion design — perfect for showcasing React + UX skills.
+
+Framer Motion list reveals, debounced search, and SSR-friendly data loading.
+Job Board is a hiring-focused platform designed to showcase how motion and accessibility can coexist in a performant, production-grade React app. Users can search, sort, and filter listings in real time through animated transitions built with Framer Motion and debounced state updates. The project integrates SSR (Server-Side Rendering) for SEO, App Router for modern routing patterns, and a WCAG-compliant interface for universal usability. Every component — from filter chips to job cards — is modular, testable, and designed with scalability in mind.
+ARIA-complete filters and focus management for an inclusive experience.
 
 > 🧑‍💻 Built by [Simone Conti](https://simoneconti.work) — front-end developer blending design and technology.
 
